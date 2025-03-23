@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "starting script execution"
 
 pip install -r requirements.txt
