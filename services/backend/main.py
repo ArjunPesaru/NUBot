@@ -3,17 +3,17 @@ from flask import Flask,jsonify
 from flask_restx import Api, Resource,fields,reqparse # type: ignore
 from src.utils.logger import logging
 from dotenv import load_dotenv
-
-
+import os
 from src.utils.exception import CustomException
 import sys
 
 from src.dataflow.rag_model import generateResponse
 load_dotenv('backend/backend.env',override=True)
+from flask_cors import CORS
 
 
 app =Flask(__name__)
-
+CORS(app,origins="*",allow_headers="*") 
 # Initialize Flask-RESTX API with Swagger support
 api =Api(app, version="1.0" , title="NuBot Backend", description="Backend for NuBot")
 
@@ -47,4 +47,5 @@ class Main(Resource):
            
 
 if __name__=="__main__":
-    app.run(host='0.0.0.0',port=5002,debug=True)
+    PORT=os.getenv("PORT")
+    app.run(host="0.0.0.0",port=PORT,debug=True)

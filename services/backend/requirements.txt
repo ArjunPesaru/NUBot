@@ -21,3 +21,4 @@ langchain[mistralai]
 langgraph
 langfair
 datetime
+flask-cors

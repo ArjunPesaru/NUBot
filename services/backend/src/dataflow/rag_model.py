@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 import mlflow
 import time
-from langfair.auto import AutoEval
+# from langfair.auto import AutoEval
 import asyncio
 load_dotenv('backend.env',override=True)
 mlflow.langchain.autolog()
