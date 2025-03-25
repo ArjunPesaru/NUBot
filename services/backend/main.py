@@ -1,29 +1,36 @@
-
-from flask import Flask,jsonify
-from flask_restx import Api, Resource,fields,reqparse # type: ignore
+import redis
+from flask import Flask, jsonify
+from flask_restx import Api, Resource, fields, reqparse
 from src.utils.logger import logging
 from dotenv import load_dotenv
 import os
 from src.utils.exception import CustomException
 import sys
-
 from src.dataflow.rag_model import generateResponse
-load_dotenv('backend/backend.env',override=True)
 from flask_cors import CORS
 
+# load_dotenv('backend/backend.env', override=True)
 
-app =Flask(__name__)
-CORS(app,origins="*",allow_headers="*") 
+# Connect to Redis
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_client = redis.StrictRedis(host=redis_host, port=6379, db=0, decode_responses=True)
+
+app = Flask(__name__)
+CORS(app, origins="*", allow_headers="*")  # You may want to restrict origins in production
+
 # Initialize Flask-RESTX API with Swagger support
-api =Api(app, version="1.0" , title="NuBot Backend", description="Backend for NuBot")
+api = Api(app, version="1.0", title="NuBot Backend", description="Backend for NuBot")
 
-# create a namespace 
-ns=api.namespace("NuBot",descrption="namespace for Backend")
-parser = reqparse.RequestParser()
-# Define a request model for Swagger UI
+# Create a namespace 
+ns = api.namespace("NuBot", description="Namespace for Backend")
+
+# Define request model for Swagger UI
 query_model = api.model('QueryModel', {
     'query': fields.String(required=True, description="User's input query")
 })
+
+parser = reqparse.RequestParser()
+
 @ns.route("/")
 class Main(Resource):
     @api.expect(query_model)
@@ -33,19 +40,29 @@ class Main(Resource):
     def post(self):
         """Return a simple message"""
         try:
-            parser.add_argument('query', required=True, help="Name cannot be blank!")
-            args=parser.parse_args()
-            logging.info("Get api called")
-            query=args['query']
-            logging.info("response function called")
-            response=generateResponse(query)
+            parser.add_argument('query', required=True, help="Query cannot be blank!")
+            args = parser.parse_args()
+            logging.info("POST API called")
+            query = args['query']
+            
+            # Check Redis for previous queries
+            previous_chat = redis_client.get(query)
+            if previous_chat:
+                logging.info("Found previous response in Redis")
+                return jsonify({"response": previous_chat})
+            
+            logging.info("Response function called")
+            response = generateResponse(query)
             logging.info("Response generated successfully")
-            return response
+            
+            # Store the response in Redis for future queries
+            redis_client.set(query, response, ex=3600)  # Cache for 1 hour
+            return jsonify({"response": response})
+            
         except Exception as e:
             logging.error("Custom exception occurred: %s", str(e))
             return jsonify({"error": "An internal server error occurred", "details": str(e)})
-           
 
-if __name__=="__main__":
-    PORT=os.getenv("PORT")
-    app.run(host="0.0.0.0",port=PORT,debug=True)
+if __name__ == "__main__":
+    PORT = os.getenv("PORT", 5002)  # Default to 5002 if not set
+    app.run(host='0.0.0.0', port=int(PORT), debug=True)

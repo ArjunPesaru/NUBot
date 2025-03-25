@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
@@ -7,20 +8,42 @@ services:
     command: mlflow server --host 0.0.0.0 --port 5001 --backend-store-uri file:///mlruns
     volumes:
       - ./mlruns:/mlruns
-    # healthcheck:
-    #   test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:5000/api/2.0/mlflow/experiments/list"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
-    #   start_period: 20s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
+      timeout: 30s
 
   flask_app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5002:5002"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5001
-    # depends_on:
-    #   mlflow:
-    #     condition: service_healthy
+      - PORT=5002
+      - REDIS_HOST=redis
+      - MISTRAL_API_KEY=D103nKB1N7OvGblv1ILqJk7dgK9RZTBe
+    depends_on:
+      - mlflow
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
+      timeout: 30s
     command: ./runscripts.sh
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
+      timeout: 30s

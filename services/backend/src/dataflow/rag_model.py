@@ -2,9 +2,9 @@ from langchain import hub
 from langchain_core.documents import Document
 from langgraph.graph import START, StateGraph
 from typing_extensions import List, TypedDict
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.chat_models import init_chat_model
 from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
 import getpass
 import os
 from dotenv import load_dotenv

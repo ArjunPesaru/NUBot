@@ -6,64 +6,63 @@ import json
 import re
 from urllib.parse import urljoin, urlparse
 from dotenv import load_dotenv
-load_dotenv('backend.env',override=True)
-# Configuration
-BASE_URL = os.getenv('BASE_URL')
-MAX_DEPTH = int(os.getenv('MAX_DEPTH'))             # Maximum recursion depth (base URL is depth 0)
-CONCURRENT_REQUESTS = int(os.getenv('CONCURRENT_REQUESTS'))  # Maximum number of concurrent requests
 
-# Create folder for JSON data
+#  Load configuration from .env
+load_dotenv('backend.env', override=True)
+
+BASE_URL = os.getenv('BASE_URL')
+MAX_DEPTH = int(os.getenv('MAX_DEPTH', 2))  # default to 2
+CONCURRENT_REQUESTS = int(os.getenv('CONCURRENT_REQUESTS', 5))
+
+
+#  Create folder to store JSON files
 DATA_FOLDER = "scraped_data"
-if not os.path.exists(DATA_FOLDER):
-    os.makedirs(DATA_FOLDER)
+os.makedirs(DATA_FOLDER, exist_ok=True)
 
 def safe_filename(url):
-    """Generates a filename based on the URL path."""
+    if isinstance(url, bytes):
+        url = url.decode("utf-8")  # decode bytes to str
+
     parsed = urlparse(url)
     path = parsed.path.strip('/') or 'index'
     filename = re.sub(r'[^A-Za-z0-9_\-]', '_', path) + ".json"
     return os.path.join(DATA_FOLDER, filename)
 
+
+
+
 async def fetch(session, url, semaphore):
-    """Fetch the content of the URL asynchronously."""
     try:
         async with semaphore:
-            async with session.get(url,ssl=False) as response:
+            async with session.get(url, ssl=False) as response:
                 if response.status != 200:
-                    print(f"Failed to retrieve {url} (status: {response.status})")
+                    print(f" Failed to retrieve {url} (status: {response.status})")
                     return None
                 return await response.text()
     except Exception as e:
-        print(f"Error fetching {url}: {e}")
+        print(f" Error fetching {url}: {e}")
         return None
 
 async def async_scrape(url, depth=0, session=None, semaphore=None):
-    """Recursively scrape pages asynchronously and store in JSON format."""
     if depth > MAX_DEPTH:
         return
 
-    # Check if already scraped
     filename = safe_filename(url)
     if os.path.exists(filename):
         return
 
-    print(f"Scraping (depth {depth}): {url}")
-    
+    print(f"🔍 Scraping (depth {depth}): {url}")
     html = await fetch(session, url, semaphore)
     if html is None:
         return
 
-    # Parse HTML and extract text
     soup = BeautifulSoup(html, 'html.parser')
-
-    # Remove script, style, and navigation elements
     for tag in soup(["script", "style", "nav", "footer"]):
         tag.decompose()
 
     title = soup.title.string.strip() if soup.title else "No Title"
     text = soup.get_text(separator="\n", strip=True)
 
-    # Save structured data to JSON
     page_data = {
         "url": url,
         "title": title,
@@ -73,28 +72,28 @@ async def async_scrape(url, depth=0, session=None, semaphore=None):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(page_data, f, indent=4)
 
-    # Extract and follow internal links
+    # Recurse on internal links
     tasks = []
     for link in soup.find_all('a', href=True):
         next_url = urljoin(url, link['href'])
         if urlparse(next_url).netloc == urlparse(BASE_URL).netloc:
-            next_url = next_url.split('#')[0]  # Remove fragments
+            next_url = next_url.split('#')[0]
             tasks.append(async_scrape(next_url, depth + 1, session, semaphore))
 
     if tasks:
         await asyncio.gather(*tasks)
-    
 
 async def scrape_and_load():
-    """Main function to initiate scraping."""
+    """Main async entry point"""
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
-    
     async with aiohttp.ClientSession() as session:
-        await async_scrape(BASE_URL, depth=0, session=session, semaphore=semaphore)
-    
+        await async_scrape(BASE_URL, 0, session, semaphore)
 
-def scrape_and_load_task():
-    return asyncio.run(scrape_and_load())
-
-if __name__ == '__main__':
+#  Airflow-compatible callable
+def run_scraper():
+    print(" Starting async scraper via run_scraper()...")
     asyncio.run(scrape_and_load())
+
+#  Local test support
+if __name__ == "__main__":
+    run_scraper()

@@ -1,34 +1,47 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from datasets import load_dataset
 import os
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from datasets import load_dataset
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-def chunk_data():
-    # Load all JSON files from a directory
+def run_chunking():
+    """Load scraped JSON data, chunk it, embed it, and save to FAISS index."""
     try:
-        dataset = load_dataset("json", data_dir=os.path.join(os.getcwd(),'scraped_data'),split="train")
-        docs = [ Document(
+        print("Starting data chunking and FAISS indexing...")
+
+        scraped_dir = os.path.join(os.getcwd(), 'scraped_data')
+        index_dir = os.path.join(os.getcwd(), 'faiss_index')
+
+        # Load dataset
+        dataset = load_dataset("json", data_dir=scraped_dir, split="train")
+
+        # Convert into LangChain Document objects
+        docs = [
+            Document(
                 page_content=item['text'],
                 metadata={"url": item['url'], "title": item['title']}
-            )for item in dataset if "text" in item] 
+            )
+            for item in dataset if "text" in item
+        ]
 
+        # Split into chunks
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         all_splits = text_splitter.split_documents(docs)
-        # Initialize the embedding model
-        embeddings= HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+        # Embed and create FAISS vector store
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vector_store = FAISS.from_documents(all_splits, embeddings)
-        # Convert documents into FAISS-compatible format
-        _ = vector_store.add_documents(documents=all_splits)
-        # Save FAISS index
-        vector_store.save_local('faiss_index')
-        
-        return 
+
+        # Save vector index
+        vector_store.save_local(index_dir)
+
+        print(f"FAISS index saved at: {index_dir}")
+
     except Exception as e:
-        raise Exception(e)
+        print(f"Error in run_chunking(): {str(e)}")
+        raise
 
-
-if __name__=="__main__":
-    chunk_data()
-
+# CLI support
+if __name__ == "__main__":
+    run_chunking()

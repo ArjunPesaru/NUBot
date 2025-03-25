@@ -2,23 +2,30 @@ import streamlit as st
 import requests
 from dotenv import load_dotenv
 import os
-load_dotenv('frontend.env',override=True)
-# Define the backend API URL
-API_URL = os.getenv('API_URL')  # Update if running on a different host
+import urllib.parse
 
+# Load environment variables from .env file
+load_dotenv('frontend.env', override=True)
+
+# Get the backend API URL
+API_URL = os.getenv('API_URL', 'http://localhost:5002')
+endpoint = urllib.parse.urljoin(API_URL, "NuBot/")
+
+# UI setup
 st.title("NuBot Chat Interface")
 st.markdown("### Ask NuBot any question!")
 
 # User input
 query = st.text_input("Enter your query:")
 
+# Handle Submit button
 if st.button("Submit"):
     if query:
         try:
-            # Send request to the backend API
-            response = requests.post(API_URL, json={"query": query})
-            
-            # Display the response
+            # Make POST request to backend
+            response = requests.post(endpoint, json={"query": query})
+
+            # Handle response
             if response.status_code == 200:
                 st.success("Response from NuBot:")
                 st.write(response.json())

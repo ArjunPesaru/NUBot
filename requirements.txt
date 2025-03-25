@@ -8,7 +8,7 @@ beautifulsoup4
 datasets
 torch
 faiss-cpu
-apache-airflow
+apache-airflow[celery,redis]==2.10.5
 numpy
 transformers==4.48.0
 sentence-transformers

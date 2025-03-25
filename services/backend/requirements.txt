@@ -22,3 +22,5 @@ langgraph
 langfair
 datetime
 flask-cors
+redis
+streamlit

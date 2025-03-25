@@ -29,8 +29,8 @@ COPY --from=base /usr/local/share /usr/local/share
 COPY . .
 RUN chmod +x runscripts.sh
 
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=5002
+EXPOSE 5002
 
 # 👇 This will be triggered unless overridden in docker-compose
 CMD ["./runscripts.sh"]

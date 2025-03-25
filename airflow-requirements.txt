@@ -1,0 +1,7 @@
+aiohttp
+beautifulsoup4
+datasets
+sentence-transformers
+langchain
+langchain-community
+faiss-cpu

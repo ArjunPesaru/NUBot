@@ -19,11 +19,14 @@ if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
 
 def safe_filename(url):
-    """Generates a filename based on the URL path."""
+    if isinstance(url, bytes):
+        url = url.decode("utf-8")  # decode bytes to str
+
     parsed = urlparse(url)
     path = parsed.path.strip('/') or 'index'
     filename = re.sub(r'[^A-Za-z0-9_\-]', '_', path) + ".json"
     return os.path.join(DATA_FOLDER, filename)
+
 
 async def fetch(session, url, semaphore):
     """Fetch the content of the URL asynchronously."""
