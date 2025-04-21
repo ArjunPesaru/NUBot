@@ -1,7 +1,7 @@
 from prefect import flow, task, get_run_logger
 # Import the supporting functions from dataflow module
-from dataflow.scraping import scrape_and_load_task  # adjust import to actual module path
-from dataflow.processing import chunk_data
+from dataflow.scraper import scrape_and_load_task  # adjust import to actual module path
+from dataflow.chunk_data import chunk_data
 
 # Define Prefect tasks
 @task
@@ -10,7 +10,7 @@ def scrape_all_urls_task():
     logger = get_run_logger()
     logger.info("Starting scrape_all_urls_task...")
     data = scrape_and_load_task()  # call the helper function to scrape and load data
-    logger.info(f"Scraped data: {len(data)} items.")
+    # logger.info(f"Scraped data: {len(data)} items.")
     return data
 
 @task
@@ -18,8 +18,8 @@ def dataSegmentation(data):
     """Task to segment the scraped data into chunks."""
     logger = get_run_logger()
     logger.info("Starting dataSegmentation task...")
-    segments = chunk_data(data)  # call helper to chunk the data
-    logger.info(f"Segmented data into {len(segments)} chunks.")
+    segments = chunk_data()  # call helper to chunk the data
+    # logger.info(f"Segmented data into {len(segments)} chunks.")
     return segments
 
 @flow
